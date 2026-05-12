@@ -1,0 +1,10 @@
+node_modules
+.git
+.gitignore
+.prettierrc
+*.md
+.env
+.svelte-kit
+dist
+build
+README.md
