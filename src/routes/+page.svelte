@@ -1,98 +1,64 @@
 <script>
-  import { fade, fly } from 'svelte/transition';
-  
-  // ─── Состояние приложения ───
   let step = $state('upload'); // upload | preview | processing | success | error
   let videoFile = $state(null);
   let videoUrl = $state(null);
   let isDragging = $state(false);
-  
-  // Переменные для анимации лупы
+
   let lensX = $state(10);
   let lensY = $state(10);
-  
-  let timecodes = $state([]);
+
+  let timestamps = $state([]);
   let processingTimer = null;
   let moveTimer = null;
-  
-  // ─── Логика логотипа ───
+
   let logoFailed = $state(false);
-  
-  // ─── Обработчики загрузки файла ───
-  let fileInput;
-  
+  let fileInput = $state(null);
+
   function handleFile(file) {
     if (!file) return;
-    
     if (!file.type.startsWith('video/')) {
       alert('Пожалуйста, загрузите видеофайл (MP4, WebM, AVI и т.д.)');
       return;
     }
-    
-    const maxSize = 500 * 1024 * 1024; // 500 MB
+    const maxSize = 500 * 1024 * 1024;
     if (file.size > maxSize) {
       alert('Файл слишком большой. Максимальный размер 500MB');
       return;
     }
-    
     videoFile = file;
     videoUrl = URL.createObjectURL(file);
     step = 'preview';
   }
-  
+
   function triggerFileInput() {
-    if (fileInput) {
-      fileInput.click();
-    }
+    fileInput?.click();
   }
-  
+
   function onDrop(e) {
     e.preventDefault();
     isDragging = false;
-    const file = e.dataTransfer.files[0];
-    handleFile(file);
+    handleFile(e.dataTransfer.files[0]);
   }
-  
   function onDragOver(e) {
     e.preventDefault();
     isDragging = true;
   }
-  
   function onDragLeave() {
     isDragging = false;
   }
-  
-  // ─── Отправка на анализ ───
+
   async function handleSubmit() {
     if (!videoFile) return;
-    
     step = 'processing';
-    
     moveTimer = setInterval(() => {
       lensX = Math.floor(Math.random() * 80) + 10;
       lensY = Math.floor(Math.random() * 70) + 15;
     }, 600);
-    
-    processingTimer = setTimeout(async () => {
+    processingTimer = setTimeout(() => {
       clearInterval(moveTimer);
-      
-      // 🔽 ЗАМЕНИТЕ ЭТОТ БЛОК НА РЕАЛЬНЫЙ FETCH К ВАШЕМУ API
-      /*
-      const formData = new FormData();
-      formData.append('video', videoFile);
-      
-      try {
-        const res = await fetch('api/analyze', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.found) { timecodes = data.timecodes; step = 'success'; }
-        else { step = 'error'; }
-      } catch (err) { step = 'error'; }
-      */
-      
-      // MOCK-ответ для демо
-      const mockSuccess = Math.random() > 0.4;
-      if (mockSuccess) {
-        timecodes = [
+      // MOCK
+      if (Math.random() > 0.4) {
+        timestamps = [
           '00:00:00 - 00:00:28', '00:03:01 - 00:04:04', '00:10:20 - 00:15:04',
           '01:00:00 - 01:00:28', '01:03:01 - 01:04:04', '01:10:20 - 01:15:04',
           '02:00:00 - 02:00:28', '02:03:01 - 02:04:04', '02:10:20 - 02:15:04',
@@ -102,42 +68,34 @@
       } else {
         step = 'error';
       }
-      // 🔼 КОНЕЦ MOCK-БЛОКА
-      
     }, 3000);
   }
-  
-  // ─── Скачивание таймкодов ───
-  function downloadTimecodes() {
-    const content = timecodes.join('\n');
+
+  function downloadTimestamps() {
+    const content = timestamps.join('\n');
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    
     const a = document.createElement('a');
     a.href = url;
-    a.download = `leopard_timecodes_${Date.now()}.txt`;
+    a.download = `timestamps_${Date.now()}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    
     URL.revokeObjectURL(url);
   }
-  
-  // ─── Сброс потока ───
+
   function resetFlow() {
     if (processingTimer) clearTimeout(processingTimer);
     if (moveTimer) clearInterval(moveTimer);
     if (videoUrl) URL.revokeObjectURL(videoUrl);
-    
     videoFile = null;
     videoUrl = null;
-    timecodes = [];
+    timestamps = [];
     lensX = 10;
     lensY = 10;
     step = 'upload';
   }
-  
-  // ─── Очистка при уничтожении компонента ───
+
   $effect(() => {
     return () => {
       if (processingTimer) clearTimeout(processingTimer);
@@ -148,26 +106,20 @@
 </script>
 
 <div class="app">
-  <!-- Логотип PNG с фоллбэком на текст -->
   <header class="logo">
     {#if !logoFailed}
-      <img
-        src="logo.png"
-        alt="Сбер"
-        class="logo-img"
-        onerror={() => logoFailed = true}
-      />
+      <img src="logo.png" alt="Сбер" class="logo-img" onerror={() => logoFailed = true} />
     {:else}
       <span class="logo-text">Сбер</span>
     {/if}
   </header>
 
   <main class="container">
-    <!-- 1. Экран загрузки -->
     {#if step === 'upload'}
       <div 
         class="card upload-card"
         class:active={isDragging}
+        role="region"
         ondragover={onDragOver}
         ondragleave={onDragLeave}
         ondrop={onDrop}
@@ -175,7 +127,6 @@
         <div class="upload-area">
           <input 
             type="file" 
-            id="video-input" 
             accept="video/*" 
             hidden
             bind:this={fileInput}
@@ -191,17 +142,17 @@
       </div>
     {/if}
 
-    <!-- 2. Экран превью -->
     {#if step === 'preview'}
       <div class="card preview-card">
-        <video src={videoUrl} controls class="video-preview"></video>
+        <video src={videoUrl} controls class="video-preview">
+          <track kind="captions" label="Нет субтитров" src="" srclang="ru" default hidden />
+        </video>
       </div>
       <div class="actions">
         <button class="btn primary" onclick={handleSubmit}>Отправить</button>
       </div>
     {/if}
 
-    <!-- 3. Экран обработки (анимация) -->
     {#if step === 'processing'}
       <div class="card processing-card">
         <div class="scene">
@@ -214,25 +165,23 @@
       </div>
     {/if}
 
-    <!-- 4. Успех -->
     {#if step === 'success'}
-      <div class="card result-card" transition:fly={{ y: 20, duration: 300 }}>
+      <div class="card result-card">
         <h2 class="result-title">Барс найден</h2>
-        <ul class="timecodes-list">
-          {#each timecodes as tc}
+        <ul class="timestamps-list">
+          {#each timestamps as tc}
             <li>{tc}</li>
           {/each}
         </ul>
       </div>
       <div class="actions row">
-        <button class="btn primary" onclick={downloadTimecodes}>Скачать файл с таймкодами</button>
+        <button class="btn primary" onclick={downloadTimestamps}>Скачать файл с таймкодами</button>
         <button class="btn" onclick={resetFlow}>Отправить новое видео</button>
       </div>
     {/if}
 
-    <!-- 5. Ошибка -->
     {#if step === 'error'}
-      <div class="card result-card error" transition:fly={{ y: 20, duration: 300 }}>
+      <div class="card result-card error">
         <p class="error-text">К сожалению на видео не обнаружено барса</p>
       </div>
       <div class="actions">
@@ -341,7 +290,7 @@
   }
 
   .result-title { margin: 0 0 16px; font-size: 18px; font-weight: 600; text-align: center; }
-  .timecodes-list {
+  .timestamps-list {
     list-style: none; padding: 0; margin: 0; width: 100%; max-height: 180px; overflow-y: auto;
     text-align: center; font-family: 'Courier New', monospace; font-size: 14px; color: #334155;
     line-height: 1.8; background: #F8FAFC; padding: 16px; border-radius: 12px;
@@ -361,8 +310,8 @@
   .btn.primary:hover:not(.btn:disabled) { background: #1E8E32; box-shadow: 0 4px 12px rgba(33, 160, 56, 0.3); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .timecodes-list::-webkit-scrollbar { width: 6px; }
-  .timecodes-list::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 3px; }
-  .timecodes-list::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
-  .timecodes-list::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+  .timestamps-list::-webkit-scrollbar { width: 6px; }
+  .timestamps-list::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 3px; }
+  .timestamps-list::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  .timestamps-list::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 </style>
