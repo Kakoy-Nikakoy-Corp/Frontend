@@ -3,6 +3,8 @@
 ## 1. Установка зависимостей
 
 ```bash
+git clone https://github.com/Kakoy-Nikakoy-Corp/WildlifeCV-frontend.git
+cd WildlifeCV-frontend
 npm install
 ```
 
