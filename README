@@ -4,10 +4,3 @@
 
 ```bash
 npm install
-```
-
-## 2. Запуск в режиме разработки
-
-```bash
-npm run dev
-```
