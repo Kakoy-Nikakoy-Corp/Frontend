@@ -11,4 +11,4 @@ RUN npm run build
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["node", ".svelte-kit/output/server/index.js"]
+CMD ["node", "build/index.js"]
