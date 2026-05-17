@@ -49,26 +49,49 @@
 
   async function handleSubmit() {
     if (!videoFile) return;
+
     step = 'processing';
+
+    // Keep lens moving during the entire request
     moveTimer = setInterval(() => {
-      lensX = Math.floor(Math.random() * 80) + 10;
-      lensY = Math.floor(Math.random() * 70) + 15;
+        lensX = Math.floor(Math.random() * 80) + 10;
+        lensY = Math.floor(Math.random() * 70) + 15;
     }, 600);
-    processingTimer = setTimeout(() => {
-      clearInterval(moveTimer);
-      // MOCK
-      if (Math.random() > 0.4) {
-        timestamps = [
-          '00:00:00 - 00:00:28', '00:03:01 - 00:04:04', '00:10:20 - 00:15:04',
-          '01:00:00 - 01:00:28', '01:03:01 - 01:04:04', '01:10:20 - 01:15:04',
-          '02:00:00 - 02:00:28', '02:03:01 - 02:04:04', '02:10:20 - 02:15:04',
-          '03:03:01 - 03:04:04', '03:10:20 - 03:15:04'
-        ];
-        step = 'success';
-      } else {
+
+    try {
+        const formData = new FormData();
+        formData.append('file', videoFile);
+
+        const response = await fetch('https://api.irbis.wild1.net/recognise', {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json'
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'success' && Array.isArray(data.timestrings)) {
+            timestamps = data.timestrings;
+            step = 'success';
+        } else {
+            step = 'error';
+        }
+    } catch (err) {
+        console.error('Recognition API error:', err);
         step = 'error';
-      }
-    }, 3000);
+    } finally {
+        // Always stop the lens animation when done
+        if (moveTimer) {
+            clearInterval(moveTimer);
+            moveTimer = null;
+        }
+    }
   }
 
   function downloadTimestamps() {
